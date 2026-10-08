@@ -11,7 +11,7 @@ A personal macro / markets / news dashboard, rebuilt once each weekday morning f
 
 ```bash
 cd Economics-and-Markets-Dashboard
-python3 -m venv .venv && source .venv/bin/activate      # Python 3.11+
+python3 -m venv .venv && source .venv/bin/activate      # Python 3.9+ (tested 3.9-3.13)
 pip install -r requirements.txt
 cp .env.example .env        # then put your FRED key in .env
 python verify_sources.py    # checks every series ID / feed and prints a status table

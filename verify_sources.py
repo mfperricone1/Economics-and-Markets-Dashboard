@@ -20,6 +20,10 @@ import sys
 from datetime import date, timedelta
 from urllib.parse import urlparse
 
+from macrodash import preflight
+
+preflight.check()
+
 import numpy as np
 
 from macrodash import config, sources

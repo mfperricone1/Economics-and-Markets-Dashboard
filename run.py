@@ -18,6 +18,10 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
 
+from macrodash import preflight
+
+preflight.check()
+
 from macrodash import calendar, config, news, pipeline, render
 from macrodash.store import Store
 
