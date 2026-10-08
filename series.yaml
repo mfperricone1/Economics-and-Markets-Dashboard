@@ -1,0 +1,154 @@
+# Series catalogue. Add/remove series here; no code changes needed.
+#
+# Fields:
+#   id       unique snake_case key (used by derived metrics and the dashboard)
+#   name     display name
+#   panel    us_rates | sovereigns | credit | vol | liquidity | fx | commodities |
+#            equities | macro | geo
+#   units    display units ("%", "bps", "$bn", "$/bbl", "index", ...)
+#   freq     daily | weekly | monthly | quarterly  (drives the stale threshold)
+#   change   how changes are shown: bps (yields, spreads in %), pct (prices), abs
+#   scale    optional multiplier applied to raw values (default 1)
+#   sources  ordered candidates; the first that works is used, the rest are fallbacks.
+#            source: fred | treasury | nyfed_rates | nyfed_acm | ecb | bundesbank |
+#                    banque_de_france | boe | mof_jgb | eia | gpr | yfinance
+#            yfinance is unofficial and is labelled as such in the UI.
+
+panels:
+  us_rates: US Rates
+  sovereigns: Global Sovereigns
+  credit: Credit
+  vol: Volatility & Conditions
+  liquidity: Liquidity
+  fx: FX
+  commodities: Commodities
+  equities: Equities
+  macro: Macro & Calendar
+  geo: Geopolitical Risk
+
+series:
+  # ------------------------------------------------------------- US Rates
+  - {id: ust_1m,  name: UST 1M,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS1MO}, {source: treasury, code: "1 Mo"}]}
+  - {id: ust_3m,  name: UST 3M,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS3MO}, {source: treasury, code: "3 Mo"}]}
+  - {id: ust_6m,  name: UST 6M,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS6MO}, {source: treasury, code: "6 Mo"}]}
+  - {id: ust_1y,  name: UST 1Y,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS1},   {source: treasury, code: "1 Yr"}]}
+  - {id: ust_2y,  name: UST 2Y,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS2},   {source: treasury, code: "2 Yr"}]}
+  - {id: ust_5y,  name: UST 5Y,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS5},   {source: treasury, code: "5 Yr"}]}
+  - {id: ust_7y,  name: UST 7Y,  panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS7},   {source: treasury, code: "7 Yr"}]}
+  - {id: ust_10y, name: UST 10Y, panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS10},  {source: treasury, code: "10 Yr"}]}
+  - {id: ust_20y, name: UST 20Y, panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS20},  {source: treasury, code: "20 Yr"}]}
+  - {id: ust_30y, name: UST 30Y, panel: us_rates, units: "%", freq: daily, change: bps, tags: [curve], sources: [{source: fred, code: DGS30},  {source: treasury, code: "30 Yr"}]}
+  - {id: t10y2y,  name: 10s2s,   panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: fred, code: T10Y2Y}]}
+  - {id: t10y3m,  name: 10s3m,   panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: fred, code: T10Y3M}]}
+  - {id: tips_10y, name: 10Y TIPS real yield, panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: fred, code: DFII10}]}
+  - {id: be_10y,   name: 10Y breakeven,       panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: fred, code: T10YIE}]}
+  - {id: fwd_5y5y, name: 5Y5Y fwd inflation,  panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: fred, code: T5YIFR}]}
+  - {id: effr,     name: Eff. fed funds,      panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: fred, code: DFF}, {source: nyfed_rates, code: unsecured/effr}]}
+  - {id: sofr,     name: SOFR,                panel: us_rates, units: "%", freq: daily, change: bps, sources: [{source: nyfed_rates, code: secured/sofr}, {source: fred, code: SOFR}]}
+  - {id: tp_10y,   name: 10Y term premium (ACM), panel: us_rates, units: "%", freq: daily, change: bps,
+     note: "NY Fed ACM; falls back to Kim-Wright (FRED THREEFYTP10) if the NY Fed download fails",
+     sources: [{source: nyfed_acm, code: ACMTP10}, {source: fred, code: THREEFYTP10, note: Kim-Wright}]}
+
+  # ---------------------------------------------------- Global Sovereigns
+  # Best free *daily official* source per market. Monthly fallbacks are flagged in the UI.
+  - {id: bund_10y, name: Bund 10Y, panel: sovereigns, units: "%", freq: daily, change: bps,
+     note: "Bundesbank daily estimated 10y yield (Svensson, listed Federal securities)",
+     sources: [{source: bundesbank, code: "BBSIS/D.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A"},
+               {source: fred, code: IRLTLT01DEM156N, note: monthly}]}
+  - {id: oat_10y, name: OAT 10Y, panel: sovereigns, units: "%", freq: daily, change: bps,
+     note: "Banque de France daily TEC10 needs a free BDF_API_KEY; otherwise ECB monthly",
+     sources: [{source: banque_de_france, code: FM.D.FR.EUR.FR2.BB.FR10YT_RR.YLD},
+               {source: ecb, code: "IRS/M.FR.L.L40.CI.0000.EUR.N.Z", note: monthly},
+               {source: fred, code: IRLTLT01FRM156N, note: monthly}]}
+  - {id: btp_10y, name: BTP 10Y, panel: sovereigns, units: "%", freq: daily, change: bps,
+     note: "No free daily official BTP source found; ECB convergence yield is monthly",
+     sources: [{source: ecb, code: "IRS/M.IT.L.L40.CI.0000.EUR.N.Z", note: monthly},
+               {source: fred, code: IRLTLT01ITM156N, note: monthly}]}
+  - {id: gilt_10y, name: Gilt 10Y, panel: sovereigns, units: "%", freq: daily, change: bps,
+     note: "BoE nominal par yield; zero-coupon as fallback",
+     sources: [{source: boe, code: IUDMNPY}, {source: boe, code: IUDMNZC},
+               {source: fred, code: IRLTLT01GBM156N, note: monthly}]}
+  - {id: jgb_10y, name: JGB 10Y, panel: sovereigns, units: "%", freq: daily, change: bps,
+     sources: [{source: mof_jgb, code: 10Y}, {source: fred, code: IRLTLT01JPM156N, note: monthly}]}
+
+  # ---------------------------------------------------------------- Credit
+  - {id: ig_oas,  name: US IG OAS,  panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLC0A0CM}]}
+  - {id: hy_oas,  name: US HY OAS,  panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLH0A0HYM2}]}
+  - {id: aaa_oas, name: AAA OAS,    panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLC0A1CAAA}]}
+  - {id: aa_oas,  name: AA OAS,     panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLC0A2CAA}]}
+  - {id: a_oas,   name: A OAS,      panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLC0A3CA}]}
+  - {id: bbb_oas, name: BBB OAS,    panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLC0A4CBBB}]}
+  - {id: bb_oas,  name: BB OAS,     panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLH0A1HYBB}]}
+  - {id: b_oas,   name: B OAS,      panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLH0A2HYB}]}
+  - {id: ccc_oas, name: CCC & lower OAS, panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLH0A3HYC}]}
+  - {id: em_oas,  name: EM corp OAS, panel: credit, units: "%", freq: daily, change: bps, sources: [{source: fred, code: BAMLEMCBPIOAS}]}
+
+  # --------------------------------------------------- Vol & conditions
+  - {id: vix,  name: VIX,  panel: vol, units: index, freq: daily,  change: abs, sources: [{source: fred, code: VIXCLS}]}
+  - {id: nfci, name: Chicago Fed NFCI, panel: vol, units: index, freq: weekly, change: abs, sources: [{source: fred, code: NFCI}]}
+
+  # ------------------------------------------------------------- Liquidity
+  # FRED units: WALCL & WTREGEN in $mn (scaled to $bn), RRPONTSYD already $bn.
+  - {id: walcl, name: Fed balance sheet, panel: liquidity, units: "$bn", freq: weekly, change: abs, scale: 0.001, sources: [{source: fred, code: WALCL}]}
+  - {id: tga,   name: Treasury General Acct, panel: liquidity, units: "$bn", freq: weekly, change: abs, scale: 0.001, sources: [{source: fred, code: WTREGEN}]}
+  - {id: rrp,   name: ON reverse repo, panel: liquidity, units: "$bn", freq: daily, change: abs, sources: [{source: fred, code: RRPONTSYD}]}
+
+  # -------------------------------------------------------------------- FX
+  - {id: usd_broad, name: "Broad USD index (Fed, not DXY)", panel: fx, units: index, freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DTWEXBGS}]}
+  - {id: eurusd, name: EURUSD, panel: fx, units: "", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DEXUSEU}]}
+  - {id: usdjpy, name: USDJPY, panel: fx, units: "", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DEXJPUS}]}
+  - {id: usdcny, name: USDCNY, panel: fx, units: "", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DEXCHUS}]}
+  - {id: usdmxn, name: USDMXN, panel: fx, units: "", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DEXMXUS}]}
+  - {id: usdbrl, name: USDBRL, panel: fx, units: "", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DEXBZUS}]}
+  - {id: usdinr, name: USDINR, panel: fx, units: "", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DEXINUS}]}
+  - {id: usdtry, name: USDTRY, panel: fx, units: "", freq: daily, change: pct, sources: [{source: yfinance, code: TRY=X}]}
+
+  # ----------------------------------------------------------- Commodities
+  - {id: brent, name: Brent spot, panel: commodities, units: "$/bbl", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DCOILBRENTEU}, {source: eia, code: PET.RBRTE.D}]}
+  - {id: wti,   name: WTI spot,   panel: commodities, units: "$/bbl", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DCOILWTICO}, {source: eia, code: PET.RWTC.D}]}
+  - {id: henry_hub, name: Henry Hub spot, panel: commodities, units: "$/MMBtu", freq: daily, change: pct, stale_bdays: 8, sources: [{source: fred, code: DHHNGSP}, {source: eia, code: NG.RNGWHHD.D}]}
+  - {id: ttf,    name: TTF front-month, panel: commodities, units: "EUR/MWh", freq: daily, change: pct, sources: [{source: yfinance, code: TTF=F}]}
+  - {id: gold,   name: Gold (COMEX front), panel: commodities, units: "$/oz", freq: daily, change: pct, sources: [{source: yfinance, code: GC=F}]}
+  - {id: copper, name: Copper (COMEX front), panel: commodities, units: "$/lb", freq: daily, change: pct, sources: [{source: yfinance, code: HG=F}]}
+  - {id: wheat,  name: Wheat (CBOT front), panel: commodities, units: "c/bu", freq: daily, change: pct, sources: [{source: yfinance, code: ZW=F}]}
+
+  # -------------------------------------------------------------- Equities
+  - {id: spx,     name: S&P 500,      panel: equities, units: index, freq: daily, change: pct, sources: [{source: fred, code: SP500}, {source: yfinance, code: ^GSPC}]}
+  - {id: nasdaq,  name: Nasdaq Comp., panel: equities, units: index, freq: daily, change: pct, sources: [{source: fred, code: NASDAQCOM}, {source: yfinance, code: ^IXIC}]}
+  - {id: rut,     name: Russell 2000, panel: equities, units: index, freq: daily, change: pct, sources: [{source: yfinance, code: ^RUT}]}
+  - {id: nikkei,  name: Nikkei 225,   panel: equities, units: index, freq: daily, change: pct, sources: [{source: fred, code: NIKKEI225}, {source: yfinance, code: ^N225}]}
+  - {id: stoxx600, name: Stoxx 600,   panel: equities, units: index, freq: daily, change: pct, sources: [{source: yfinance, code: ^STOXX}]}
+  - {id: eem,     name: MSCI EM (EEM ETF), panel: equities, units: "$", freq: daily, change: pct, sources: [{source: yfinance, code: EEM}]}
+  - {id: rsp,     name: S&P equal-wt (RSP), panel: equities, units: "$", freq: daily, change: pct, sources: [{source: yfinance, code: RSP}]}
+  - {id: spy,     name: S&P cap-wt (SPY),   panel: equities, units: "$", freq: daily, change: pct, sources: [{source: yfinance, code: SPY}]}
+  # Sector ETFs (heatmap)
+  - {id: xlk,  name: Tech (XLK),         panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLK}]}
+  - {id: xlf,  name: Financials (XLF),   panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLF}]}
+  - {id: xle,  name: Energy (XLE),       panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLE}]}
+  - {id: xlv,  name: Health Care (XLV),  panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLV}]}
+  - {id: xli,  name: Industrials (XLI),  panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLI}]}
+  - {id: xly,  name: Cons. Disc. (XLY),  panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLY}]}
+  - {id: xlp,  name: Cons. Staples (XLP), panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLP}]}
+  - {id: xlu,  name: Utilities (XLU),    panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLU}]}
+  - {id: xlb,  name: Materials (XLB),    panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLB}]}
+  - {id: xlre, name: Real Estate (XLRE), panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLRE}]}
+  - {id: xlc,  name: Comm. Svcs (XLC),   panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLC}]}
+
+  # ----------------------------------------------------------------- Macro
+  - {id: gdpnow, name: Atlanta Fed GDPNow, panel: macro, units: "% saar", freq: daily, change: bps, stale_bdays: 10, sources: [{source: fred, code: GDPNOW}]}
+
+  # ----------------------------------------------------------- Geopolitics
+  - {id: gpr_daily,   name: GPR daily (7d avg), panel: geo, units: index, freq: daily, change: abs, stale_bdays: 10, sources: [{source: gpr, code: "daily:GPRD_MA7"}, {source: gpr, code: "daily:GPRD"}]}
+  - {id: gpr_daily_raw, name: GPR daily,        panel: geo, units: index, freq: daily, change: abs, stale_bdays: 10, sources: [{source: gpr, code: "daily:GPRD"}]}
+  - {id: gpr_monthly, name: GPR monthly,        panel: geo, units: index, freq: monthly, change: abs, sources: [{source: gpr, code: "monthly:GPR"}]}
+
+# FRED release ids for the 14-day US calendar (verified by verify_sources.py).
+# ISM is not on FRED; its dates are computed by rule (1st / 3rd business day).
+calendar_releases:
+  - {id: 10, name: CPI}
+  - {id: 54, name: PCE (Personal Income & Outlays)}
+  - {id: 50, name: Employment Situation (payrolls)}
+  - {id: 53, name: GDP}
+  - {id: 46, name: PPI}
+  - {id: 180, name: Jobless claims}
+  - {id: 9,  name: Retail sales}
