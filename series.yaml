@@ -9,6 +9,9 @@
 #   freq     daily | weekly | monthly | quarterly  (drives the stale threshold)
 #   change   how changes are shown: bps (yields, spreads in %), pct (prices), abs
 #   scale    optional multiplier applied to raw values (default 1)
+#   dp       optional decimal places for display
+#   tags     optional: curve (US curve chart), sector (heatmap, not a table row),
+#            hidden (fetched for derived metrics but not shown as a row)
 #   sources  ordered candidates; the first that works is used, the rest are fallbacks.
 #            source: fred | treasury | nyfed_rates | nyfed_acm | ecb | bundesbank |
 #                    banque_de_france | boe | mof_jgb | eia | gpr | yfinance
@@ -119,8 +122,8 @@ series:
   - {id: nikkei,  name: Nikkei 225,   panel: equities, units: index, freq: daily, change: pct, sources: [{source: fred, code: NIKKEI225}, {source: yfinance, code: ^N225}]}
   - {id: stoxx600, name: Stoxx 600,   panel: equities, units: index, freq: daily, change: pct, sources: [{source: yfinance, code: ^STOXX}]}
   - {id: eem,     name: MSCI EM (EEM ETF), panel: equities, units: "$", freq: daily, change: pct, sources: [{source: yfinance, code: EEM}]}
-  - {id: rsp,     name: S&P equal-wt (RSP), panel: equities, units: "$", freq: daily, change: pct, sources: [{source: yfinance, code: RSP}]}
-  - {id: spy,     name: S&P cap-wt (SPY),   panel: equities, units: "$", freq: daily, change: pct, sources: [{source: yfinance, code: SPY}]}
+  - {id: rsp,     name: S&P equal-wt (RSP), panel: equities, units: "$", freq: daily, change: pct, tags: [hidden], sources: [{source: yfinance, code: RSP}]}
+  - {id: spy,     name: S&P cap-wt (SPY),   panel: equities, units: "$", freq: daily, change: pct, tags: [hidden], sources: [{source: yfinance, code: SPY}]}
   # Sector ETFs (heatmap)
   - {id: xlk,  name: Tech (XLK),         panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLK}]}
   - {id: xlf,  name: Financials (XLF),   panel: equities, units: "$", freq: daily, change: pct, tags: [sector], sources: [{source: yfinance, code: XLF}]}
@@ -141,6 +144,31 @@ series:
   - {id: gpr_daily,   name: GPR daily (7d avg), panel: geo, units: index, freq: daily, change: abs, stale_bdays: 10, sources: [{source: gpr, code: "daily:GPRD_MA7"}, {source: gpr, code: "daily:GPRD"}]}
   - {id: gpr_daily_raw, name: GPR daily,        panel: geo, units: index, freq: daily, change: abs, stale_bdays: 10, sources: [{source: gpr, code: "daily:GPRD"}]}
   - {id: gpr_monthly, name: GPR monthly,        panel: geo, units: index, freq: monthly, change: abs, sources: [{source: gpr, code: "monthly:GPR"}]}
+
+# Derived metrics, computed after fetching. Inputs are series ids above (or earlier
+# derived ids). Inputs are inner-joined on date, except those listed in `ffill`,
+# which are carried forward (as-of join). `expr` is a pandas expression;
+# `fn` names a built-in transform instead (realized_vol).
+derived:
+  - {id: net_liq, name: "Net liquidity (WALCL-TGA-RRP)", panel: liquidity, units: "$bn", freq: weekly, change: abs,
+     inputs: [walcl, tga, rrp], ffill: [rrp], expr: "walcl - tga - rrp"}
+  - {id: btp_bund, name: BTP-Bund 10Y, panel: sovereigns, units: bps, freq: daily, change: abs, dp: 0,
+     inputs: [btp_10y, bund_10y], expr: "(btp_10y - bund_10y) * 100"}
+  - {id: oat_bund, name: OAT-Bund 10Y, panel: sovereigns, units: bps, freq: daily, change: abs, dp: 0,
+     inputs: [oat_10y, bund_10y], expr: "(oat_10y - bund_10y) * 100"}
+  - {id: brent_wti, name: Brent-WTI, panel: commodities, units: "$/bbl", freq: daily, change: abs,
+     inputs: [brent, wti], expr: "brent - wti", stale_bdays: 8}
+  - {id: ttf_usd, name: "TTF in $/MMBtu", panel: commodities, units: "$/MMBtu", freq: daily, change: pct,
+     note: "EUR/MWh x EURUSD / 3.412 MMBtu per MWh (EURUSD carried forward)",
+     inputs: [ttf, eurusd], ffill: [eurusd], expr: "ttf * eurusd / 3.412"}
+  - {id: ttf_hh, name: TTF-Henry Hub, panel: commodities, units: "$/MMBtu", freq: daily, change: abs,
+     inputs: [ttf_usd, henry_hub], expr: "ttf_usd - henry_hub", stale_bdays: 8}
+  - {id: cu_au, name: Copper/gold ratio (x1000), panel: commodities, units: ratio, freq: daily, change: pct, dp: 3,
+     inputs: [copper, gold], expr: "copper / gold * 1000"}
+  - {id: rsp_spy, name: Equal-wt / cap-wt S&P (RSP/SPY), panel: equities, units: ratio, freq: daily, change: pct, dp: 4,
+     inputs: [rsp, spy], expr: "rsp / spy"}
+  - {id: rates_rvol, name: "UST 10Y realized vol (20d, MOVE proxy)", panel: vol, units: "bp/yr", freq: daily, change: abs, dp: 0,
+     inputs: [ust_10y], fn: realized_vol, window: 20}
 
 # FRED release ids for the 14-day US calendar (verified by verify_sources.py).
 # ISM is not on FRED; its dates are computed by rule (1st / 3rd business day).

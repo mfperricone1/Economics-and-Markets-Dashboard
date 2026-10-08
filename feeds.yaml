@@ -1,0 +1,34 @@
+# RSS/Atom feeds pulled at build time. Official sources first.
+# Optional per-feed `include` keywords: keep only items whose title/summary match one
+# (case-insensitive) - useful for broad general-news feeds.
+max_items_per_group: 10
+max_age_days: 5
+groups:
+  "US Macro/Fed":
+    - {name: Federal Reserve, url: "https://www.federalreserve.gov/feeds/press_all.xml", official: true}
+    - {name: BLS, url: "https://www.bls.gov/feed/bls_latest.rss", official: true}
+    - {name: BEA, url: "https://apps.bea.gov/rss/rss.xml", official: true}
+    - {name: US Treasury, url: "https://home.treasury.gov/system/files/126/ofac.xml", official: true, include: [sanction, treasury, iran, russia]}
+    - {name: CNBC Economy, url: "https://www.cnbc.com/id/20910258/device/rss/rss.html"}
+  Europe:
+    - {name: ECB, url: "https://www.ecb.europa.eu/rss/press.html", official: true}
+    - {name: Bank of England, url: "https://www.bankofengland.co.uk/rss/news", official: true}
+    - {name: Guardian Economics, url: "https://www.theguardian.com/business/economics/rss"}
+    - {name: BBC Business, url: "https://feeds.bbci.co.uk/news/business/rss.xml", include: [europe, uk, ecb, euro, germany, france, italy, bank of england, inflation, gilt, eu ]}
+  Asia:
+    - {name: Bank of Japan, url: "https://www.boj.or.jp/en/rss/whatsnew.xml", official: true}
+    - {name: Nikkei Asia, url: "https://asia.nikkei.com/rss/feed/nar"}
+    - {name: SCMP Economy, url: "https://www.scmp.com/rss/92/feed"}
+    - {name: CNBC Asia, url: "https://www.cnbc.com/id/19832390/device/rss/rss.html"}
+  "Middle East & Energy":
+    - {name: EIA Today in Energy, url: "https://www.eia.gov/rss/todayinenergy.xml", official: true}
+    - {name: Al Jazeera, url: "https://www.aljazeera.com/xml/rss/all.xml",
+       include: [iran, israel, gaza, saudi, uae, emirates, qatar, iraq, syria, lebanon, yemen, houthi, red sea, hormuz, opec, oil, gas, egypt, turkey, jordan, gulf]}
+    - {name: Al-Monitor, url: "https://www.al-monitor.com/rss"}
+    - {name: Middle East Eye, url: "https://www.middleeasteye.net/rss"}
+    - {name: OilPrice.com, url: "https://oilprice.com/rss/main"}
+  Markets:
+    - {name: CNBC Markets, url: "https://www.cnbc.com/id/15839069/device/rss/rss.html"}
+    - {name: MarketWatch, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories"}
+    - {name: Yahoo Finance, url: "https://finance.yahoo.com/news/rssindex"}
+    - {name: FT Markets, url: "https://www.ft.com/markets?format=rss"}

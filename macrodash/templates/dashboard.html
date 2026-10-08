@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro Monitor</title>
+<style>
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0d0f; --surface: #14161a; --surface-2: #1b1e23; --border: #262a31;
+  --text: #e7e7e3; --text-2: #b4b7bd; --muted: #7d828c; --accent: #f0a30a;
+  --up: #3fb950; --down: #f0605d; --flag-bg: rgba(240,163,10,.18); --flag: #f5b83d;
+  --grid: #23272d; --axis: #6b7079; --stale: .42;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  --s7: #e66767;
+  --demo: #b3261e;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f3f1; --surface: #fcfcfb; --surface-2: #f0efec; --border: #dddcd7;
+  --text: #0b0b0b; --text-2: #3d3c39; --muted: #6b6a66; --accent: #a35f00;
+  --up: #0f7b0f; --down: #c02a2a; --flag-bg: rgba(250,178,25,.28); --flag: #8a5a00;
+  --grid: #e7e6e2; --axis: #77766f; --stale: .45;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #4a3aa7;
+  --s7: #e34948;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 12px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+.num, td.n, .mono { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+a { color: inherit; }
+.wrap { max-width: 1680px; margin: 0 auto; padding: 0 12px 40px; }
+
+/* header */
+header.top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
+.hdr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; max-width: 1680px; margin: 0 auto; }
+.brand { font-weight: 700; letter-spacing: .06em; color: var(--accent); font-size: 13px; text-transform: uppercase; }
+.meta { color: var(--text-2); }
+.meta b { color: var(--text); font-weight: 600; }
+.spacer { flex: 1; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer; font: inherit; }
+.badge.bad { border-color: var(--down); color: var(--down); }
+.badge.ok { color: var(--up); border-color: color-mix(in srgb, var(--up) 50%, var(--border)); }
+.demo-banner { background: var(--demo); color: #fff; text-align: center; font-weight: 700; padding: 5px 12px; letter-spacing: .03em; }
+#failpanel { display: none; max-width: 1680px; margin: 0 auto; padding: 6px 12px 10px; }
+#failpanel.open { display: block; }
+#failpanel table { width: 100%; }
+
+/* what moved */
+.moved { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 4px; scrollbar-width: thin; }
+.moved .lbl { flex: none; align-self: center; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; padding-right: 4px; }
+.chip { flex: none; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 4px 8px; cursor: pointer; white-space: nowrap; }
+.chip:hover { border-color: var(--accent); }
+.chip .nm { color: var(--text); font-weight: 600; }
+.chip .z { color: var(--flag); margin-left: 6px; }
+.chip .dt { color: var(--muted); margin-left: 6px; }
+
+/* panels */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: 10px; margin-top: 8px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; min-width: 0; display: flex; flex-direction: column; }
+.panel.wide { grid-column: 1 / -1; }
+.panel h2 { margin: 0; padding: 6px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 8px; }
+.panel h2 .sub { color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 12px; padding: 6px 10px 0; }
+.chart { position: relative; min-width: 0; }
+.chart .ttl { color: var(--text-2); font-size: 11px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: center; }
+.chart .ttl .t { font-weight: 600; color: var(--text); }
+.legend i { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 4px; border-radius: 1px; }
+.legend span { white-space: nowrap; color: var(--text-2); }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; padding: 4px 6px; font-size: 11px; white-space: nowrap; z-index: 5; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.tip .d { color: var(--muted); margin-bottom: 2px; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.notes { color: var(--muted); padding: 4px 10px 6px; font-size: 11px; }
+.notes p { margin: 2px 0; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; }
+table.t { border-collapse: collapse; width: 100%; }
+table.t th { text-align: right; color: var(--muted); font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; padding: 4px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+table.t th:first-child, table.t td:first-child { text-align: left; }
+table.t td { padding: 3px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; text-align: right; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t tr.hl td { background: var(--flag-bg); }
+td.name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; position: sticky; left: 0; background: var(--surface); }
+td.name .u { color: var(--muted); font-size: 10.5px; margin-left: 4px; }
+td.val { color: var(--text); font-weight: 600; }
+td.asof { color: var(--text-2); }
+td.up { color: var(--up); } td.dn { color: var(--down); } td.na { color: var(--muted); }
+td.z { background: var(--flag-bg); color: var(--flag) !important; font-weight: 700; outline: 1px solid color-mix(in srgb, var(--flag) 45%, transparent); outline-offset: -1px; }
+tr.stale td:not(.name) { opacity: var(--stale); }
+tr.stale td.name { color: var(--muted); }
+tr.failed td.name { color: var(--down); }
+.tag { display: inline-block; font-size: 9px; line-height: 1; padding: 2px 3px; border-radius: 2px; margin-left: 4px; vertical-align: 1px; font-weight: 700; letter-spacing: .03em; border: 1px solid currentColor; }
+.tag.stale { color: var(--muted); }
+.tag.unof { color: var(--s6); }
+.tag.mo { color: var(--s4); }
+.tag.fb { color: var(--s1); }
+.tag.err { color: var(--down); }
+td.spark svg { display: block; }
+tr.jump { animation: jump 1.6s ease-out; }
+@keyframes jump { from { background: var(--flag-bg); } to { background: transparent; } }
+
+/* heatmap */
+table.heat td.c { font-weight: 600; min-width: 58px; color: var(--text); }
+
+/* calendar & news */
+.cal { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 6px 10px 8px; }
+.cal h3, .news h3 { font-size: 10.5px; margin: 4px 0 4px; text-transform: uppercase; color: var(--text-2); letter-spacing: .05em; }
+.cal ul, .news ul { list-style: none; margin: 0; padding: 0; }
+.cal li { display: flex; gap: 8px; padding: 2px 0; border-bottom: 1px solid var(--grid); }
+.cal li .d { color: var(--accent); min-width: 70px; }
+.cal li .approx { color: var(--muted); }
+.news { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 0 16px; padding: 4px 10px 10px; }
+.news li { padding: 4px 0; border-bottom: 1px solid var(--grid); }
+.news li a { text-decoration: none; color: var(--text); }
+.news li a:hover { color: var(--accent); text-decoration: underline; }
+.news .src { color: var(--muted); font-size: 10.5px; margin-top: 1px; }
+.news .src .off { color: var(--s3); }
+.empty { color: var(--muted); padding: 6px 0; }
+footer { color: var(--muted); margin-top: 14px; font-size: 11px; }
+footer table.t td, footer table.t th { text-align: left; white-space: normal; }
+@media (max-width: 640px) {
+  body { font-size: 12.5px; }
+  .hdr { padding: 6px 10px; gap: 4px 10px; }
+  .wrap { padding: 0 6px 30px; }
+  .cal { grid-template-columns: 1fr; }
+  th.c-m1, td.c-m1, th.c-spark, td.spark { display: none; }
+  td.name { max-width: 140px; }
+}
+@media (max-width: 430px) { th.c-w1, td.c-w1 { display: none; } }
+</style>
+</head>
+<body>
+<div id="demo"></div>
+<header class="top"><div class="hdr" id="hdr"></div><div id="failpanel"></div></header>
+<div class="wrap">
+  <div class="moved" id="moved"></div>
+  <div class="grid" id="grid"></div>
+  <footer id="foot"></footer>
+</div>
+<script id="snapshot" type="application/json">/*__SNAPSHOT__*/</script>
+<script>
+(() => {
+const S = JSON.parse(document.getElementById('snapshot').textContent);
+const $ = (sel, el = document) => el.querySelector(sel);
+const h = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.innerHTML = html; return e; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ROWS = {}; S.panels.forEach(p => p.rows.forEach(r => ROWS[r.id] = r)); (S.extra_rows || []).forEach(r => ROWS[r.id] = r);
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = s => { if (!s) return '—'; const [y, m, d] = s.split('-'); return `${d}-${MON[+m - 1]}` + (y != S.run_date.slice(0, 4) ? ` ${y.slice(2)}` : ''); };
+const fmtNum = (v, dp) => v == null ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const fmtVal = r => r.value == null ? '—' : fmtNum(r.value, r.dp) + (r.units === '%' || r.units === '% saar' ? '%' : '');
+function fmtChg(kind, x, r) {
+  if (x == null) return '—';
+  const a = Math.abs(x);
+  let s, suf = '';
+  if (kind === 'bps') { s = a.toFixed(a < 10 ? 1 : 0); suf = 'bp'; }
+  else if (kind === 'pct') { s = a.toFixed(a < 10 ? 2 : 1); suf = '%'; }
+  else if (r && r.units === 'bps') { s = a.toFixed(a < 10 ? 1 : 0); suf = 'bp'; }
+  else s = fmtNum(a, r ? Math.min(r.dp, 2) : 2);
+  const zero = !/[1-9]/.test(s);  // rounds to zero: no sign
+  return (zero ? '' : x > 0 ? '+' : '−') + s + suf;
+}
+const cls = x => x == null ? 'na' : x > 0 ? 'up' : x < 0 ? 'dn' : 'na';
+const SER = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6', '--s7'];
+
+/* ---------- theme ---------- */
+const root = document.documentElement;
+try { const t = localStorage.getItem('mm-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+
+/* ---------- header ---------- */
+if (S.demo) $('#demo').innerHTML = '<div class="demo-banner">DEMO — SYNTHETIC DATA, NOT MARKET PRICES. Run <span class="mono">python run.py</span> with network access for live data.</div>';
+const nFail = S.failures.length;
+$('#hdr').innerHTML = `<span class="brand">Macro Monitor</span>
+  <span class="meta">Updated <b>${esc(S.generated_local)}</b></span>
+  <span class="meta">Daily closes · as-of dates per row</span>
+  <span class="spacer"></span>
+  <button class="badge ${nFail ? 'bad' : 'ok'}" id="failbtn" aria-expanded="false">${nFail ? `⚠ ${nFail} source${nFail > 1 ? 's' : ''} failed` : '✓ all sources OK'}</button>
+  <button class="badge" id="theme" title="Toggle theme">◐ Theme</button>`;
+$('#theme').onclick = () => { const t = root.dataset.theme === 'dark' ? 'light' : 'dark'; root.dataset.theme = t; try { localStorage.setItem('mm-theme', t); } catch (e) {} redraw(); };
+if (nFail) {
+  $('#failpanel').innerHTML = `<div class="tbl-wrap"><table class="t"><tr><th>Item</th><th>Showing</th><th>Error</th></tr>${
+    S.failures.map(f => `<tr><td>${esc(f.name)}</td><td style="text-align:left">${esc(f.showing)}</td><td style="text-align:left;white-space:normal">${esc(f.error)}</td></tr>`).join('')}</table></div>`;
+  $('#failbtn').onclick = e => { const p = $('#failpanel'); p.classList.toggle('open'); e.target.setAttribute('aria-expanded', p.classList.contains('open')); };
+}
+
+/* ---------- what moved ---------- */
+const mv = $('#moved');
+mv.innerHTML = '<span class="lbl">What moved</span>' + (S.what_moved.length ? S.what_moved.map(m => {
+  const r = ROWS[m.id];
+  return `<span class="chip" data-id="${m.id}" title="${esc(m.name)}: change vs trailing 1y distribution of ${m.freq === 'weekly' ? 'weekly' : 'daily'} changes"><span class="nm">${esc(m.name)}</span> <span class="num ${cls(m.chg)}" style="color:var(--${m.chg > 0 ? 'up' : 'down'})">${fmtChg(m.change_kind, m.chg, r)}</span><span class="z num">z ${m.z > 0 ? '+' : ''}${m.z.toFixed(1)}</span><span class="dt">${fmtDate(m.as_of)}</span></span>`;
+}).join('') : '<span class="empty">No fresh series with enough history.</span>');
+mv.onclick = e => { const c = e.target.closest('.chip'); if (!c) return; const tr = document.getElementById('row-' + c.dataset.id); if (tr) { tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); tr.classList.remove('jump'); void tr.offsetWidth; tr.classList.add('jump'); } };
+
+/* ---------- charts ---------- */
+const charts = [];
+function niceTicks(lo, hi, n = 4) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= n) || 10 * mag;
+  const t = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) t.push(+v.toFixed(10));
+  return { t, step };
+}
+const parseD = s => { const [y, m, d] = s.split('-'); return Date.UTC(+y, m - 1, +d); };
+function bisect(arr, x) { let lo = 0, hi = arr.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] < x) lo = mid + 1; else hi = mid; } if (lo > 0 && Math.abs(arr[lo - 1] - x) < Math.abs(arr[lo] - x)) lo--; return lo; }
+
+/* spec: {el, title, series:[{name, x:[], y:[], color, dash}], cat:[labels]|null, yfmt, height, zero} */
+function drawChart(spec) {
+  const el = spec.el; el.innerHTML = '';
+  const W = Math.max(200, el.clientWidth), H = spec.height || 150, m = { l: 40, r: 10, t: 6, b: 18 };
+  const ser = spec.series.filter(s => s.y && s.y.some(v => v != null));
+  const head = h('div', { class: 'ttl' }, `<span class="t">${esc(spec.title)}</span>` + (ser.length > 1 ? '<span class="legend">' + ser.map(s => `<span><i style="background:${s.color};${s.dash ? 'height:0;border-top:2px dashed ' + s.color : ''}"></i>${esc(s.name)}</span>`).join(' ') + '</span>' : '') + (spec.sub ? `<span>${esc(spec.sub)}</span>` : ''));
+  el.appendChild(head);
+  if (!ser.length) { el.appendChild(h('div', { class: 'empty' }, 'No data')); return; }
+  const xs = ser.map(s => spec.cat ? s.y.map((_, i) => i) : s.x.map(parseD));
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+  ser.forEach((s, k) => s.y.forEach((v, i) => { if (v == null) return; xmin = Math.min(xmin, xs[k][i]); xmax = Math.max(xmax, xs[k][i]); ymin = Math.min(ymin, v); ymax = Math.max(ymax, v); }));
+  if (spec.zero) { ymin = Math.min(ymin, 0); ymax = Math.max(ymax, 0); }
+  const pad = (ymax - ymin) * .08 || 1; const { t: yt } = niceTicks(ymin - pad, ymax + pad);
+  const y0 = Math.min(yt[0], ymin), y1 = Math.max(yt[yt.length - 1], ymax);
+  const X = x => m.l + (x - xmin) / ((xmax - xmin) || 1) * (W - m.l - m.r);
+  const Y = y => m.t + (1 - (y - y0) / ((y1 - y0) || 1)) * (H - m.t - m.b);
+  const NS = 'http://www.w3.org/2000/svg';
+  let g = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(spec.title)}">`;
+  const yf = spec.yfmt || (v => v.toLocaleString('en-US', { maximumFractionDigits: 2 }));
+  yt.forEach(v => { if (v < y0 - 1e-9 || v > y1 + 1e-9) return; g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--grid')}" stroke-width="1"/><text x="${m.l - 4}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="${css('--axis')}" class="num">${yf(v)}</text>`; });
+  if (spec.zero && y0 < 0 && y1 > 0) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="${css('--axis')}" stroke-width="1"/>`;
+  if (spec.cat) spec.cat.forEach((c, i) => { g += `<text x="${X(i)}" y="${H - 4}" text-anchor="middle" font-size="10" fill="${css('--axis')}">${esc(c)}</text>`; });
+  else {
+    const d0 = new Date(xmin), d1 = new Date(xmax); const months = (d1.getUTCFullYear() - d0.getUTCFullYear()) * 12 + d1.getUTCMonth() - d0.getUTCMonth();
+    const every = Math.max(1, Math.ceil(months / Math.max(2, Math.floor((W - m.l) / 70))));
+    for (let k = 1; k <= months; k += 1) { const d = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + k, 1); if (k % every) continue; const lab = new Date(d).getUTCMonth() === 0 ? String(new Date(d).getUTCFullYear()) : MON[new Date(d).getUTCMonth()]; g += `<text x="${X(d)}" y="${H - 4}" text-anchor="middle" font-size="10" fill="${css('--axis')}">${lab}</text>`; }
+  }
+  ser.forEach((s, k) => {
+    let p = '', pen = false;
+    s.y.forEach((v, i) => { if (v == null) { pen = false; return; } p += (pen ? 'L' : 'M') + X(xs[k][i]).toFixed(1) + ' ' + Y(v).toFixed(1); pen = true; });
+    g += `<path d="${p}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? `stroke-dasharray="${s.dash}"` : ''}/>`;
+    if (spec.cat) s.y.forEach((v, i) => { if (v != null) g += `<circle cx="${X(xs[k][i])}" cy="${Y(v)}" r="2.6" fill="${s.color}" stroke="${css('--surface')}" stroke-width="1.5"/>`; });
+  });
+  g += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" stroke="${css('--axis')}" stroke-width="1" stroke-dasharray="2 2" visibility="hidden"/><g class="dots"></g>`;
+  g += `<rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${H}" fill="transparent" class="hit"/></svg>`;
+  const wrap = h('div', { style: 'position:relative' }, g); el.appendChild(wrap);
+  const tip = h('div', { class: 'tip' }); wrap.appendChild(tip);
+  const svg = $('svg', wrap), xh = $('.xh', svg), dots = $('.dots', svg);
+  const fmtT = spec.tipfmt || yf;
+  const move = ev => {
+    const r = svg.getBoundingClientRect(); const px = (ev.clientX - r.left) * W / r.width;
+    const xv = xmin + (px - m.l) / (W - m.l - m.r) * (xmax - xmin);
+    const i0 = bisect(xs[0], xv); const xx = xs[0][i0];
+    xh.setAttribute('x1', X(xx)); xh.setAttribute('x2', X(xx)); xh.setAttribute('visibility', 'visible');
+    let rows = '', dd = '';
+    ser.forEach((s, k) => { const i = spec.cat ? i0 : bisect(xs[k], xx); const v = s.y[i]; if (v == null) return; if (!spec.cat && Math.abs(xs[k][i] - xx) > 4 * 864e5) return;
+      rows += `<div><i style="background:${s.color}"></i>${esc(s.name)} <b class="num">${fmtT(v)}</b>${!spec.cat && ser.length > 1 && xs[k][i] !== xx ? ' <span style="color:var(--muted)">(' + fmtDate(s.x[i]) + ')</span>' : ''}</div>`;
+      dd += `<circle cx="${X(xs[k][i])}" cy="${Y(v)}" r="3.5" fill="${s.color}" stroke="${css('--surface')}" stroke-width="2"/>`; });
+    dots.innerHTML = dd;
+    tip.innerHTML = `<div class="d">${spec.cat ? esc(spec.cat[i0]) : fmtDate(ser[0].x[i0]) + ' ' + ser[0].x[i0].slice(0, 4)}</div>` + rows;
+    tip.style.display = 'block';
+    const tx = X(xx) * r.width / W; const tw = tip.offsetWidth;
+    tip.style.left = (tx + 12 + tw > r.width ? tx - tw - 12 : tx + 12) + 'px'; tip.style.top = '18px';
+  };
+  const leave = () => { tip.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); dots.innerHTML = ''; };
+  const hit = $('.hit', svg); hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move); hit.addEventListener('pointerleave', leave);
+}
+function chart(parent, spec) { const el = h('div', { class: 'chart' }); parent.appendChild(el); spec.el = el; charts.push(spec); return spec; }
+function redraw() { charts.forEach(c => { c.series.forEach(s => { if (s.cvar) s.color = css(s.cvar); }); drawChart(c); }); drawSparks(); }
+
+/* ---------- sparklines ---------- */
+function spark(r) {
+  const v = r.hist.v, n = v.length; if (n < 2) return '';
+  const W = 84, H = 18; let lo = Math.min(...v), hi = Math.max(...v); if (lo === hi) { lo -= 1; hi += 1; }
+  const step = Math.max(1, Math.floor(n / 120));
+  let p = ''; for (let i = 0; i < n; i += step) p += (p ? 'L' : 'M') + (i / (n - 1) * (W - 3)).toFixed(1) + ' ' + (2 + (1 - (v[i] - lo) / (hi - lo)) * (H - 4)).toFixed(1);
+  const ly = 2 + (1 - (v[n - 1] - lo) / (hi - lo)) * (H - 4);
+  p += `L${W - 3} ${ly.toFixed(1)}`;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><path d="${p}" fill="none" stroke="${css('--text-2')}" stroke-width="1.2" stroke-linejoin="round"/><circle cx="${W - 3}" cy="${ly}" r="2" fill="${css('--accent')}"/></svg>`;
+}
+function drawSparks() { document.querySelectorAll('td.spark').forEach(td => { const r = ROWS[td.dataset.id]; td.innerHTML = spark(r); }); }
+
+/* ---------- tables ---------- */
+function rowTags(r) {
+  let t = '';
+  if (r.failed) t += `<span class="tag err" title="${esc('Fetch failed this run; showing last cached value. ' + r.error)}">FAIL</span>`;
+  if (r.stale) t += `<span class="tag stale" title="Last observation ${r.bdays_old} business days old">STALE</span>`;
+  if (r.monthly) t += `<span class="tag mo" title="Monthly data: no free daily official source reachable">M</span>`;
+  else if (r.freq === 'weekly') t += `<span class="tag mo" title="Weekly series">W</span>`;
+  if (r.unofficial) t += `<span class="tag unof" title="Unofficial source (Yahoo Finance via yfinance)">UNOFF</span>`;
+  if (r.fallback && !r.monthly) t += `<span class="tag fb" title="Primary source failed; using fallback ${esc(r.source + ':' + r.code)}">FB</span>`;
+  return t;
+}
+function table(rows) {
+  const zc = (r, k) => r.zflag && ((r.freq === 'daily' && k === 'd1') || (r.freq === 'weekly' && k === 'w1')) ? ' z' : '';
+  return `<div class="tbl-wrap"><table class="t"><thead><tr><th>Series</th><th>Last</th><th>As of</th><th>1d</th><th class="c-w1">1w</th><th class="c-m1">1m</th><th>YTD</th><th class="c-spark">1y</th></tr></thead><tbody>${
+  rows.map(r => {
+    const unit = r.units && !['%', 'index', ''].includes(r.units) ? `<span class="u">${esc(r.units)}</span>` : '';
+    const title = `${r.name} — ${r.source}:${r.code}${r.note ? ' — ' + r.note : ''}${r.z != null ? ` — z=${r.z.toFixed(2)}` : ''}`;
+    return `<tr id="row-${r.id}" class="${r.stale ? 'stale' : ''} ${r.failed ? 'failed' : ''}" title="${esc(title)}">
+      <td class="name">${esc(r.name)}${unit}${rowTags(r)}</td>
+      <td class="n val">${fmtVal(r)}</td>
+      <td class="n asof">${fmtDate(r.as_of)}</td>
+      ${['d1', 'w1', 'm1', 'ytd'].map(k => `<td class="n ${cls(r.chg[k])}${zc(r, k)}${k === 'm1' ? ' c-m1' : k === 'w1' ? ' c-w1' : ''}"${zc(r, k) ? ` title="z = ${r.z.toFixed(2)} vs 1y of changes"` : ''}>${fmtChg(r.change_kind, r.chg[k], r)}</td>`).join('')}
+      <td class="spark" data-id="${r.id}"></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+/* ---------- panels ---------- */
+const grid = $('#grid');
+const bp = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(0);
+const pctf = v => v.toFixed(2) + '%';
+function hist(id) { const r = ROWS[id]; return r ? { x: r.hist.d, y: r.hist.v } : { x: [], y: [] }; }
+function S_(id, name, cvar, extra = {}) { return { name, ...hist(id), cvar, color: css(cvar), ...extra }; }
+
+S.panels.forEach(p => {
+  const el = h('section', { class: 'panel', id: 'panel-' + p.key }); grid.appendChild(el);
+  el.appendChild(h('h2', {}, esc(p.title) + (p.sub ? ` <span class="sub">${esc(p.sub)}</span>` : '')));
+  const ch = h('div', { class: 'charts' });
+  const k = p.key;
+  if (k === 'us_rates' && S.curve) {
+    const c = S.curve;
+    const mk = (o, name, cvar, dash) => ({ name: `${name} ${o.date ? fmtDate(o.date) : ''}`, y: o.vals || [], cvar, color: css(cvar), dash });
+    chart(ch, { title: 'UST curve', cat: c.labels, yfmt: v => v.toFixed(2), tipfmt: v => v.toFixed(2) + '%', series: [mk(c.today, 'Latest', '--s1'), mk(c.m1, '1m ago', '--s2', '5 3'), mk(c.y1, '1y ago', '--s6', '2 3')] });
+    chart(ch, { title: '10s2s & 10s3m', zero: true, yfmt: v => (v * 100).toFixed(0), tipfmt: v => (v * 100).toFixed(0) + 'bp', series: [S_('t10y2y', '10s2s', '--s1'), S_('t10y3m', '10s3m', '--s2')] });
+  }
+  if (k === 'sovereigns') {
+    chart(ch, { title: '10Y yields', tipfmt: pctf, series: [S_('bund_10y', 'Bund', '--s1'), S_('oat_10y', 'OAT', '--s2'), S_('btp_10y', 'BTP', '--s3'), S_('gilt_10y', 'Gilt', '--s4'), S_('jgb_10y', 'JGB', '--s5'), S_('ust_10y', 'UST', '--s6')] });
+    chart(ch, { title: 'Spreads to Bund', sub: 'bp', tipfmt: v => v.toFixed(0) + 'bp', series: [S_('btp_bund', 'BTP–Bund', '--s3'), S_('oat_bund', 'OAT–Bund', '--s2')] });
+  }
+  if (k === 'credit') {
+    chart(ch, { title: 'IG OAS', sub: 'bp', yfmt: v => (v * 100).toFixed(0), tipfmt: v => (v * 100).toFixed(0) + 'bp', series: [S_('ig_oas', 'IG', '--s1')] });
+    chart(ch, { title: 'HY OAS', sub: 'bp', yfmt: v => (v * 100).toFixed(0), tipfmt: v => (v * 100).toFixed(0) + 'bp', series: [S_('hy_oas', 'HY', '--s2')] });
+  }
+  if (k === 'vol') {
+    chart(ch, { title: 'VIX', series: [S_('vix', 'VIX', '--s1')] });
+    chart(ch, { title: 'UST 10Y realized vol (20d)', sub: 'bp/yr, MOVE proxy', tipfmt: v => v.toFixed(0) + 'bp', series: [S_('rates_rvol', 'Realized vol', '--s2')] });
+  }
+  if (k === 'liquidity') {
+    chart(ch, { title: 'Net liquidity', sub: '$bn', yfmt: v => (v / 1000).toFixed(2) + 'tn', tipfmt: v => '$' + fmtNum(v, 0) + 'bn', series: [S_('net_liq', 'Net liquidity', '--s1')] });
+    chart(ch, { title: 'TGA & ON RRP', sub: '$bn', tipfmt: v => '$' + fmtNum(v, 0) + 'bn', series: [S_('tga', 'TGA', '--s2'), S_('rrp', 'RRP', '--s3')] });
+  }
+  if (k === 'fx') {
+    chart(ch, { title: 'Broad dollar index (Fed)', series: [S_('usd_broad', 'Broad USD', '--s1')] });
+    chart(ch, { title: 'USDTRY', sub: 'unofficial', series: [S_('usdtry', 'USDTRY', '--s2')] });
+  }
+  if (k === 'commodities') {
+    chart(ch, { title: 'Brent & WTI', sub: '$/bbl', series: [S_('brent', 'Brent', '--s1'), S_('wti', 'WTI', '--s2')] });
+    chart(ch, { title: 'TTF vs Henry Hub', sub: '$/MMBtu', series: [S_('ttf_usd', 'TTF', '--s3'), S_('henry_hub', 'Henry Hub', '--s4')] });
+    chart(ch, { title: 'Copper/gold ratio', sub: '×1000 — compare with UST 10Y →', height: 120, series: [S_('cu_au', 'Cu/Au', '--s5')] });
+    chart(ch, { title: 'UST 10Y', sub: '% — same dates', height: 120, tipfmt: pctf, series: [S_('ust_10y', 'UST 10Y', '--s6')] });
+  }
+  if (k === 'equities') {
+    chart(ch, { title: 'Equal-wt vs cap-wt S&P', sub: 'RSP/SPY', yfmt: v => v.toFixed(3), tipfmt: v => v.toFixed(4), series: [S_('rsp_spy', 'RSP/SPY', '--s1')] });
+  }
+  if (k === 'geo') {
+    chart(ch, { title: 'Geopolitical Risk index (daily)', series: [S_('gpr_daily', '7d avg', '--s2'), S_('gpr_daily_raw', 'Daily', '--s1', { width: 1 })] });
+  }
+  if (ch.children.length) el.appendChild(ch);
+  if (p.rows.length) el.insertAdjacentHTML('beforeend', table(p.rows));
+  if (k === 'equities' && S.heatmap.length) {
+    const cols = [['d1', '1d'], ['w1', '1w'], ['m1', '1m'], ['ytd', 'YTD']];
+    const mx = {}; cols.forEach(([c]) => mx[c] = Math.max(1e-9, ...S.heatmap.map(r => Math.abs(r.chg[c] || 0))));
+    const col = (v, c) => { if (v == null) return ''; const a = Math.min(1, Math.abs(v) / mx[c]); return `background:color-mix(in srgb, var(--${v >= 0 ? 'up' : 'down'}) ${Math.round(a * 60)}%, transparent)`; };
+    el.insertAdjacentHTML('beforeend', `<div class="notes" style="padding-top:8px"><b style="color:var(--text-2)">Sector ETFs</b> · total price change, unofficial (Yahoo) · as of ${fmtDate(S.heatmap[0].as_of)}</div><div class="tbl-wrap"><table class="t heat"><thead><tr><th>Sector</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${
+      S.heatmap.map(r => `<tr class="${r.stale ? 'stale' : ''}"><td class="name">${esc(r.name)}${r.stale ? '<span class="tag stale">STALE</span>' : ''}</td>${cols.map(([c]) => `<td class="n c" style="${col(r.chg[c], c)}">${fmtChg('pct', r.chg[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+  }
+  if (k === 'macro') {
+    const C = S.calendar, cb = C.central_banks;
+    const rel = C.releases.length ? C.releases.map(x => `<li><span class="d num">${esc(fmtDate(x.date))}</span><span>${esc(x.name)}${x.approx ? ' <span class="approx">(approx.)</span>' : ''}</span></li>`).join('') : '<li class="empty">No releases found</li>';
+    const mt = cb.meetings.length ? cb.meetings.map(x => `<li><span class="d num">${esc(fmtDate(x.date))}</span><span>${esc(x.bank)}</span></li>`).join('') : '<li class="empty">None in the next 90 days</li>';
+    el.insertAdjacentHTML('beforeend', `<div class="cal"><div><h3>US releases — next 14 days</h3><ul>${rel}</ul></div><div><h3>Central banks — next 90 days</h3><ul>${mt}</ul>${!cb.verified ? '<div class="notes" style="padding:4px 0">Hardcoded dates, not yet verified against official calendars.</div>' : ''}${cb.needs_update ? '<div class="notes" style="padding:0;color:var(--flag)">Meeting list ends within 90 days — update calendar.yaml.</div>' : ''}</div></div>`);
+  }
+  if (p.notes && p.notes.length) el.insertAdjacentHTML('beforeend', `<div class="notes">${p.notes.map(n => `<p>${esc(n)}</p>`).join('')}</div>`);
+});
+
+/* ---------- news ---------- */
+const N = S.news;
+if (N) {
+  const el = h('section', { class: 'panel wide', id: 'panel-news' }); grid.appendChild(el);
+  el.appendChild(h('h2', {}, 'News <span class="sub">' + (N.failed.length ? `${N.failed.length} feed(s) failed: ${esc(N.failed.map(f => f.name).join(', '))}` : 'RSS headlines at build time') + '</span>'));
+  const ago = s => { if (!s) return ''; const d = new Date(s); return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/New_York' }) + ' ET'; };
+  el.insertAdjacentHTML('beforeend', `<div class="news">${N.groups.map(g => `<div><h3>${esc(g.name)}</h3><ul>${g.items.length ? g.items.map(i => `<li><a href="${esc(i.link)}" target="_blank" rel="noopener noreferrer">${esc(i.title)}</a><div class="src">${i.official ? '<span class="off">● </span>' : ''}${esc(i.source)}${i.published ? ' · ' + ago(i.published) : ''}</div></li>`).join('') : '<li class="empty">No items</li>'}</ul></div>`).join('')}</div>`);
+}
+
+/* ---------- footer ---------- */
+$('#foot').innerHTML = `<p><b>Reading this page.</b> Values are daily closes (or the latest official fixing). Every row shows its own as-of date; rows older than their staleness threshold (3 business days for daily series) are dimmed and tagged STALE.
+Yields and spreads change in bp, prices in %. Highlighted changes have |z| &gt; 2 versus the trailing one-year distribution of changes. Tags: W weekly · M monthly · UNOFF unofficial source (Yahoo Finance) · FB fallback source · FAIL fetch failed, cached value shown.</p>
+<div class="tbl-wrap"><table class="t"><thead><tr><th>Source</th><th>Used for</th><th>Notes / known gaps</th></tr></thead><tbody>${S.source_notes.map(s => `<tr><td>${esc(s[0])}</td><td>${esc(s[1])}</td><td>${esc(s[2])}</td></tr>`).join('')}</tbody></table></div>
+<p>Generated ${esc(S.generated_utc)} UTC${S.demo ? ' · DEMO DATA' : ''}.</p>`;
+
+redraw();
+let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(redraw, 120); }).observe(grid);
+})();
+</script>
+</body>
+</html>

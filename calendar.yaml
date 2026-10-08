@@ -1,0 +1,50 @@
+# Central bank policy meeting dates (decision day = last day of a multi-day meeting).
+#
+# >>> UPDATE THESE EVERY YEAR (typically each December, when banks publish next year's
+# >>> schedule) and double-check against the official pages:
+#   FOMC: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+#   ECB:  https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html
+#   BoE:  https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates
+#   BoJ:  https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm
+#
+# Dates entered 2026-10 from memory of the published 2026 schedules and NOT yet
+# re-checked against the sites above (the build environment had no web access).
+# Verify before relying on them.
+verified: false
+central_banks:
+  FOMC:
+    - 2026-01-28
+    - 2026-03-18
+    - 2026-04-29
+    - 2026-06-17
+    - 2026-07-29
+    - 2026-09-16
+    - 2026-10-28
+    - 2026-12-09
+  ECB:
+    - 2026-02-05
+    - 2026-03-19
+    - 2026-04-30
+    - 2026-06-11
+    - 2026-07-23
+    - 2026-09-10
+    - 2026-10-29
+    - 2026-12-17
+  BoE:
+    - 2026-02-05
+    - 2026-03-19
+    - 2026-04-30
+    - 2026-06-18
+    - 2026-07-30
+    - 2026-09-17
+    - 2026-11-05
+    - 2026-12-17
+  BoJ:
+    - 2026-01-23
+    - 2026-03-19
+    - 2026-04-28
+    - 2026-06-16
+    - 2026-07-31
+    - 2026-09-18
+    - 2026-10-30
+    - 2026-12-18

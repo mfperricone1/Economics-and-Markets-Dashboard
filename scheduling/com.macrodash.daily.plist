@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install_launchd.sh replaces __REPO__ and copies this to ~/Library/LaunchAgents.
+     launchd uses the Mac's local time zone: 06:30 here = 06:30 America/New_York only if
+     the Mac is set to Eastern time. Adjust Hour below otherwise. Weekday 1-5 = Mon-Fri.
+     If the Mac is asleep at 06:30, launchd runs the job once when it wakes. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.macrodash.daily</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/bash</string><string>__REPO__/scheduling/run_daily.sh</string></array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>6</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>6</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>6</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>6</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>6</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>StandardOutPath</key><string>__REPO__/logs/launchd.out</string>
+  <key>StandardErrorPath</key><string>__REPO__/logs/launchd.err</string>
+</dict>
+</plist>

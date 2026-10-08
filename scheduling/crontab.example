@@ -1,0 +1,9 @@
+# Weekdays at 06:30 New York time.
+#
+# Linux (cronie / most distros) honours CRON_TZ, so this works whatever the server's zone:
+CRON_TZ=America/New_York
+30 6 * * 1-5  /path/to/Economics-and-Markets-Dashboard/scheduling/run_daily.sh
+#
+# macOS cron ignores CRON_TZ and uses the Mac's local time; on a Mac set to Eastern time
+# just use the line without CRON_TZ. (launchd is preferred on macOS: it also runs a
+# missed job after the machine wakes from sleep; cron silently skips it.)

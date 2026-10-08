@@ -1,6 +1,7 @@
 """Shared HTTP session: retries with exponential backoff and per-host rate limiting."""
 from __future__ import annotations
 
+import re
 import threading
 import time
 from urllib.parse import urlparse
@@ -35,6 +36,14 @@ _dead_hosts: dict[str, str] = {}
 
 class HostUnreachable(requests.ConnectionError):
     pass
+
+
+_SECRET_RE = re.compile(r"((?:api_?key|apikey|token)=)[^&\s'\"]+", re.I)
+
+
+def redact(msg: str) -> str:
+    """Strip API keys from URLs embedded in error messages."""
+    return _SECRET_RE.sub(r"\1***", msg)
 
 
 def session() -> requests.Session:
@@ -76,7 +85,13 @@ def get(url: str, *, params: dict | None = None, headers: dict | None = None,
     try:
         r = session().get(url, params=params, headers=headers, timeout=timeout)
     except requests.ConnectionError as e:
-        _dead_hosts[host] = str(e).splitlines()[0][:200]
-        raise
-    r.raise_for_status()
+        msg = redact(str(e))
+        _dead_hosts[host] = msg.splitlines()[0][:200]
+        raise requests.ConnectionError(msg) from None
+    except requests.RequestException as e:
+        raise type(e)(redact(str(e))) from None
+    try:
+        r.raise_for_status()
+    except requests.HTTPError as e:
+        raise requests.HTTPError(redact(str(e)), response=r) from None
     return r

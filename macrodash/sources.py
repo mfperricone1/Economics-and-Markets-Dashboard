@@ -57,21 +57,27 @@ def fred_get(path: str, **params) -> dict:
     return r.json()
 
 
+# verify_sources.py wants series metadata (titles, discontinued flags); the daily
+# pipeline skips it to halve the number of FRED calls.
+FRED_METADATA = True
+
+
 def fred(code: str, start: date):
     meta = {}
-    try:
-        info = fred_get("series", series_id=code)["seriess"][0]
-        meta = {
-            "title": info.get("title"),
-            "frequency": info.get("frequency_short"),
-            "units": info.get("units_short"),
-            "observation_end": info.get("observation_end"),
-            "last_updated": info.get("last_updated"),
-            "discontinued": "DISCONTINUED" in info.get("title", "").upper(),
-        }
-    except Exception as e:  # metadata is nice-to-have; observations call decides
-        if "400" in str(e):
-            raise SourceError(f"FRED series {code} does not exist") from e
+    if FRED_METADATA:
+        try:
+            info = fred_get("series", series_id=code)["seriess"][0]
+            meta = {
+                "title": info.get("title"),
+                "frequency": info.get("frequency_short"),
+                "units": info.get("units_short"),
+                "observation_end": info.get("observation_end"),
+                "last_updated": info.get("last_updated"),
+                "discontinued": "DISCONTINUED" in info.get("title", "").upper(),
+            }
+        except Exception as e:  # metadata is nice-to-have; observations call decides
+            if "400" in str(e):
+                raise SourceError(f"FRED series {code} does not exist") from e
     obs = fred_get("series/observations", series_id=code,
                    observation_start=start.isoformat())["observations"]
     s = pd.Series({o["date"]: o["value"] for o in obs})  # "." -> NaN via _clean
@@ -297,7 +303,8 @@ def yfinance(code: str, start: date):
     t = yf.Ticker(code)
     df = t.history(start=start.isoformat(), interval="1d", auto_adjust=False)
     if df is None or df.empty:
-        raise SourceError(f"yfinance returned no data for {code}")
+        raise SourceError(f"yfinance returned no data for {code} "
+                          "(bad symbol, Yahoo rate limit, or network blocked)")
     tz = df.index.tz or NY
     now_local = datetime.now(tz)
     last_bar = df.index[-1]

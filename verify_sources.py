@@ -8,6 +8,7 @@ output/verify_report.{md,csv}. Exit code is 1 if any series has no working sourc
 Also checks:
   * FRED calendar release ids used for the US data calendar
   * whether ICE BofA *sector* OAS series exist on FRED (search API)
+  * every RSS feed in feeds.yaml (item count, newest item)
 
 Usage: python verify_sources.py [--only id1,id2] [--no-extras]
 """
@@ -119,6 +120,19 @@ def check_sector_oas() -> tuple[str, list[str]]:
     return f"OK ({len(hits)} OAS series found, {len(sector)} look sector-based)", sector
 
 
+def check_feeds() -> list[list]:
+    from macrodash import news
+    rows = []
+    for group, feeds in config.load_feeds()["groups"].items():
+        for f in feeds:
+            _, items, err = news._fetch(f)
+            newest = max((i["published"] or "" for i in items), default="")[:10]
+            status = ("FAIL: " + short_err(Exception(err))) if err else (
+                "OK" if items else "EMPTY (no items / filter too strict)")
+            rows.append([group, f["name"], len(items), newest or "-", status])
+    return rows
+
+
 def fmt_table(rows: list[list[str]], headers: list[str]) -> str:
     w = [max(len(str(x)) for x in col) for col in zip(headers, *rows)]
     line = lambda r: "  ".join(str(x).ljust(n) for x, n in zip(r, w))  # noqa: E731
@@ -169,7 +183,12 @@ def main() -> int:
         print(f"\nICE BofA sector OAS on FRED: {st}")
         for s in sector[:40]:
             print("   ", s)
-        extras = (f"\n## FRED calendar releases\n\n" +
+        feeds = check_feeds()
+        print("\nRSS feeds:")
+        print(fmt_table(feeds, ["group", "feed", "items", "newest", "status"]))
+        extras = (f"\n## RSS feeds\n\n```\n" +
+                  fmt_table(feeds, ["group", "feed", "items", "newest", "status"]) + "\n```\n" +
+                  f"\n## FRED calendar releases\n\n" +
                   "\n".join(f"- {c['id']} {c['expected']} -> {c['fred_name']} [{c['status']}]"
                             for c in cal) +
                   f"\n\n## ICE BofA sector OAS on FRED\n\n{st}\n\n" +
